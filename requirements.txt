@@ -1,0 +1,4 @@
+# Add your Python runtime dependencies here, one per line.
+pygeohash==3.3.1
+utm==0.8.1
+mgrs==1.5.4

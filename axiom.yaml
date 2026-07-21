@@ -1,0 +1,45 @@
+name: christiangeorgelucas/geo-encoding-tools
+version: 0.1.0
+language: python
+description: Composable geospatial encoding nodes -- geohash encode/decode/neighbors/compare, and coordinate-system conversion across lat/lon, UTM, and MGRS (military grid) -- wrapping pygeohash, Turbo87/utm, and hobuinc/mgrs (NGA's public-domain GEOTRANS). Offline, deterministic, and a flow-neighbor of christiangeorgelucas/geo-tools (2D geometry), sharing its lat/lon field convention.
+nodes:
+    - name: GeohashEncode
+      input: GeohashEncodeInput
+      output: EncodedGeohash
+      description: Encode a lat/lon point into a geohash string at a given character precision (1-12; default 9, ~4.8m), via pygeohash.
+    - name: GeohashDecode
+      input: GeohashCell
+      output: DecodedGeohash
+      description: Decode a geohash back to its center point, +/- error margins, and bounding box (also emitted as a GeoJSON polygon for chaining into geo-tools), via pygeohash's decode_exactly.
+    - name: GeohashNeighbors
+      input: GeohashCell
+      output: GeohashNeighborhood
+      description: Compute the 8 geohashes adjacent to a cell (N/NE/E/SE/S/SW/W/NW) at the same precision, via pygeohash's get_adjacent.
+    - name: GeohashCompare
+      input: GeohashPair
+      output: GeohashRelation
+      description: Test whether one geohash spatially contains another (prefix relationship) and compute their longest common prefix.
+    - name: LatLonToUTM
+      input: GeoCoordinate
+      output: UTMCoordinate
+      description: Convert a lat/lon point to a Universal Transverse Mercator (UTM) zone/hemisphere/easting/northing coordinate, via Turbo87/utm.
+    - name: UTMToLatLon
+      input: UTMCoordinate
+      output: GeoCoordinate
+      description: Convert a UTM coordinate back to lat/lon, via Turbo87/utm.
+    - name: LatLonToMGRS
+      input: MGRSEncodeInput
+      output: MGRSCoordinate
+      description: Convert a lat/lon point to an MGRS (military grid) string at a given precision (0-5 digits per easting/northing), via hobuinc/mgrs (NGA GEOTRANS).
+    - name: MGRSToLatLon
+      input: MGRSCoordinate
+      output: GeoCoordinate
+      description: Convert an MGRS (military grid) string back to lat/lon, via hobuinc/mgrs (NGA GEOTRANS).
+    - name: UTMToMGRS
+      input: UTMCoordinate
+      output: MGRSCoordinate
+      description: Convert a UTM coordinate directly to an MGRS string at full (1m) precision, via hobuinc/mgrs (NGA GEOTRANS).
+    - name: MGRSToUTM
+      input: MGRSCoordinate
+      output: UTMCoordinate
+      description: Convert an MGRS string directly to its UTM zone/hemisphere/easting/northing coordinate, via hobuinc/mgrs (NGA GEOTRANS).

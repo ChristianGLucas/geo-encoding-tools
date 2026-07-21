@@ -1,0 +1,158 @@
+// This file defines the data contracts (messages) for your Axiom package.
+// Every node's --input and --output refers to a message defined here.
+//
+// Run `axiom create message <Name>` to scaffold a new message below.
+// Run `axiom generate` to compile these definitions into language bindings in gen/.
+//
+// DOCUMENTATION
+//   Comments written directly above a message or field declaration are extracted
+//   automatically at publish time and shown in the Axiom registry as documentation.
+//   Write your descriptions there — no separate doc files needed.
+//
+//   Leading comment  (no blank line before the declaration) → registry description ✓
+//   Detached comment (blank line before the declaration)    → ignored by registry  ✗
+//
+// This file is yours to edit. Axiom only appends new message blocks — it never
+// overwrites or removes content you have written.
+
+// Data contracts for christiangeorgelucas/geo-encoding-tools — composable
+// geospatial ENCODING nodes: geohash encode/decode/neighbors/compare, and
+// coordinate-system conversion across lat/lon <-> UTM <-> MGRS (military
+// grid). This is a flow-neighbor of christiangeorgelucas/geo-tools (2D
+// geometry: distance/area/centroid/etc) — field names (`lat`, `lon`, decimal
+// degrees, WGS-84) match that package so points flow between them without
+// renaming, and DecodedGeohash additionally emits a GeoJSON polygon string of
+// its bounding box so it chains straight into geo-tools' Geometry-consuming
+// nodes (Area, Centroid, Contains, ...). Offline and deterministic — every
+// node wraps pygeohash, utm, or mgrs (all MIT / permissive; mgrs's C core is
+// NGA's public-domain GEOTRANS).
+syntax = "proto3";
+
+package christiangeorgelucas.geo_encoding_tools;
+
+// A bare coordinate: the canonical "just a point" envelope. Used as input
+// where no precision is needed (LatLonToUTM) and as output wherever a node
+// resolves back to a point (UTMToLatLon, MGRSToLatLon).
+message GeoCoordinate {
+  double lat = 1;  // decimal degrees, WGS-84, [-90, 90]
+  double lon = 2;  // decimal degrees, WGS-84, [-180, 180]
+  // INVALID_LAT, INVALID_LON (out of range or non-finite); empty on success.
+  string error = 3;
+}
+
+// A point plus the geohash string length (precision) to encode it at.
+message GeohashEncodeInput {
+  double lat = 1;
+  double lon = 2;
+  // Number of base32 characters in the output geohash, 1-12. Higher is more
+  // precise (12 chars is sub-millimeter). 0 or unset defaults to 9 (~4.8m).
+  int32 precision = 3;
+}
+
+// The geohash produced by GeohashEncode.
+message EncodedGeohash {
+  string geohash = 1;
+  // INVALID_LAT, INVALID_LON, INVALID_PRECISION (not in 1-12); empty on success.
+  string error = 2;
+}
+
+// A single geohash string — the input to GeohashDecode and GeohashNeighbors.
+message GeohashCell {
+  string geohash = 1;
+}
+
+// A geohash decoded back to its center point, error margins (the half-width
+// of the cell in each axis — the true point could be anywhere within
+// center +/- error), and bounding box. `geojson` carries the same box as a
+// GeoJSON Polygon so it chains directly into geo-tools geometry nodes.
+message DecodedGeohash {
+  double lat = 1;
+  double lon = 2;
+  double lat_error = 3;  // +/- degrees of latitude
+  double lon_error = 4;  // +/- degrees of longitude
+  double min_lat = 5;
+  double min_lon = 6;
+  double max_lat = 7;
+  double max_lon = 8;
+  string geojson = 9;
+  // EMPTY_GEOHASH, INVALID_GEOHASH (not valid base32); empty on success.
+  string error = 10;
+}
+
+// The 8 geohashes adjacent to a cell, at the same precision, by compass
+// direction. Near the poles a direction can wrap or shorten per the geohash
+// grid's own convention (pygeohash's border-wrap rules), not an error.
+message GeohashNeighborhood {
+  string n = 1;
+  string ne = 2;
+  string e = 3;
+  string se = 4;
+  string s = 5;
+  string sw = 6;
+  string w = 7;
+  string nw = 8;
+  // EMPTY_GEOHASH, INVALID_GEOHASH, NEIGHBOR_UNDEFINED_AT_EDGE (a direction
+  // recursed past the edge of the grid, which can happen at/near a pole);
+  // empty on success.
+  string error = 9;
+}
+
+// Two geohashes to compare.
+message GeohashPair {
+  string geohash_a = 1;
+  string geohash_b = 2;
+}
+
+// Whether `geohash_a` spatially contains `geohash_b` (true iff `geohash_a` is
+// a character-for-character prefix of `geohash_b`, which for geohashes is
+// exactly spatial containment: every finer cell inside a coarser one shares
+// its full prefix), plus their longest common prefix regardless of
+// containment direction.
+message GeohashRelation {
+  bool a_contains_b = 1;
+  string common_prefix = 2;
+  int32 common_prefix_length = 3;
+  // EMPTY_GEOHASH, INVALID_GEOHASH (either input); empty on success.
+  string error = 4;
+}
+
+// A Universal Transverse Mercator coordinate: zone 1-60, hemisphere N or S,
+// plus easting/northing in meters. This is the canonical UTM envelope —
+// output of LatLonToUTM and MGRSToUTM, input to UTMToLatLon and UTMToMGRS.
+// Deliberately uses hemisphere (N/S) rather than the MGRS latitude-band
+// letter (e.g. 'U', 'T') sometimes bundled into "UTM zone" — that band
+// letter is an MGRS grid concept, not part of true UTM, and conflating the
+// two is a common correctness bug this envelope avoids by construction.
+message UTMCoordinate {
+  int32 zone_number = 1;  // 1-60
+  string hemisphere = 2;  // "N" or "S"
+  double easting = 3;     // meters
+  double northing = 4;    // meters
+  // INVALID_LAT, INVALID_LON, INVALID_UTM_ZONE (not 1-60), INVALID_HEMISPHERE
+  // (not "N"/"S"), OUT_OF_RANGE (easting/northing outside the valid UTM
+  // envelope, or latitude outside UTM's defined band of -80 to 84); empty on
+  // success.
+  string error = 5;
+}
+
+// A point plus the MGRS precision (digits per easting/northing component)
+// to encode it at.
+message MGRSEncodeInput {
+  double lat = 1;
+  double lon = 2;
+  // MGRS precision, 0-5: 0 = 100km grid square only, 5 = 1m. 0 is also the
+  // unset default (an explicit 0 and "field omitted" are indistinguishable
+  // in proto3, and both mean "100km" here, which is a legitimate low-detail
+  // MGRS request, not an error).
+  int32 precision = 3;
+}
+
+// An MGRS (military grid) coordinate string, e.g. "33UXP0480023810". The
+// canonical MGRS envelope — output of LatLonToMGRS and UTMToMGRS, input to
+// MGRSToLatLon and MGRSToUTM.
+message MGRSCoordinate {
+  string mgrs = 1;
+  // INVALID_LAT, INVALID_LON, INVALID_PRECISION (not 0-5), EMPTY_MGRS,
+  // INVALID_MGRS (malformed grid string); empty on success.
+  string error = 2;
+}
