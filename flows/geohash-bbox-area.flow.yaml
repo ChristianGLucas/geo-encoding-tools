@@ -1,0 +1,16 @@
+name: geohash-bbox-area
+description: Decode a geohash to its bounding box, then measure that box's geodesic area -- proves geo-encoding-tools' GeohashDecode.geojson chains directly into christiangeorgelucas/geo-tools' Geometry-consuming nodes.
+
+nodes:
+  - alias: decode
+    package: christiangeorgelucas/geo-encoding-tools@0.1.0
+    node: GeohashDecode
+  - alias: area
+    package: christiangeorgelucas/geo-tools@0.1.0
+    node: Area
+
+edges:
+  - from: decode
+    to: area
+    adapter:
+      "geojson": geojson
