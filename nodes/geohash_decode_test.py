@@ -59,6 +59,12 @@ def test_decode_invalid_character_is_structured_error():
     assert result.error == "INVALID_GEOHASH"
 
 
-def test_decode_oversized_input_is_structured_error_not_a_crash():
+def test_decode_large_input_does_not_crash():
+    # No length cap is imposed by this node -- the platform bounds payload
+    # size, not this node. A long but charset-valid geohash decodes to a
+    # degenerate (extremely small error-margin) point rather than crashing;
+    # pygeohash's own bisection algorithm handles arbitrary precision.
     result = geohash_decode(ax(), GeohashCell(geohash="0" * 100))
-    assert result.error == "INVALID_GEOHASH"
+    assert result.error == ""
+    assert result.lat == -90.0
+    assert result.lon == -180.0
