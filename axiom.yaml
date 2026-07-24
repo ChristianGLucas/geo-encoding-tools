@@ -1,5 +1,5 @@
 name: christiangeorgelucas/geo-encoding-tools
-version: 0.1.0
+version: 0.1.1
 language: python
 description: Composable geospatial encoding nodes -- geohash encode/decode/neighbors/compare, and coordinate-system conversion across lat/lon, UTM, and MGRS (military grid) -- wrapping pygeohash, Turbo87/utm, and hobuinc/mgrs (NGA's public-domain GEOTRANS). Offline, deterministic, and a flow-neighbor of christiangeorgelucas/geo-tools (2D geometry), sharing its lat/lon field convention.
 nodes:

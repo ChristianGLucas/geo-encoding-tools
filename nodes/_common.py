@@ -1,12 +1,13 @@
 """Shared helpers for christiangeorgelucas/geo-encoding-tools nodes.
 
-Centralizes lat/lon range validation, geohash/MGRS string sanity checks (the
-cost bound enforced BEFORE any C/native call — real geohashes are <=12 chars
-and real MGRS strings are <=15, so a generous cap costs nothing legitimate),
-and the structured-error contract every node follows: a node never raises out
-to the caller — on malformed input it returns its output message with the
-data fields empty and `error` set to one of the stable tokens documented on
-that message.
+Centralizes lat/lon range validation, geohash/MGRS string sanity checks, and
+the structured-error contract every node follows: a node never raises out to
+the caller — on malformed input it returns its output message with the data
+fields empty and `error` set to one of the stable tokens documented on that
+message. Payload size is the platform's job, not this package's — no node
+here imposes a length cap on the geohash/MGRS string itself (charset
+validation, which pygeohash's/mgrs's own decoders already perform, is what
+actually rejects a malformed string).
 """
 from __future__ import annotations
 
@@ -16,13 +17,6 @@ import math
 # and the one pygeohash uses): 0-9 and lowercase b-z minus 'a', 'i', 'l', 'o'
 # (chosen to avoid visual confusion with digits).
 GEOHASH_ALPHABET = frozenset("0123456789bcdefghjkmnpqrstuvwxyz")
-
-# Bounds enforced before any pygeohash/mgrs call. Real geohashes never exceed
-# 12 characters (sub-millimeter) and real MGRS strings never exceed ~15
-# characters (100km-square id + up to 10 easting/northing digits); these caps
-# only stop a pathological caller-controlled string, not a legitimate one.
-MAX_GEOHASH_LEN = 32
-MAX_MGRS_LEN = 32
 
 MIN_GEOHASH_PRECISION = 1
 MAX_GEOHASH_PRECISION = 12
@@ -91,26 +85,18 @@ def validate_mgrs_precision(precision: int) -> None:
 
 
 def validate_geohash_string(geohash: str) -> str:
-    """Returns the lower-cased geohash. Only checks emptiness and length —
-    charset validation is left to pygeohash's own decoder (it already raises
+    """Returns the lower-cased geohash. Only checks emptiness — charset
+    validation is left to pygeohash's own decoder (it already raises
     ValueError on the first invalid character; duplicating that scan here
     would just be a slower, parallel copy of the same check)."""
     if not geohash:
         raise GeoEncodingError("EMPTY_GEOHASH", "geohash is required")
-    if len(geohash) > MAX_GEOHASH_LEN:
-        raise GeoEncodingError(
-            "INVALID_GEOHASH", f"geohash is {len(geohash)} chars, exceeding the {MAX_GEOHASH_LEN} limit"
-        )
     return geohash.lower()
 
 
 def validate_mgrs_string(mgrs_str: str) -> str:
     if not mgrs_str:
         raise GeoEncodingError("EMPTY_MGRS", "mgrs is required")
-    if len(mgrs_str) > MAX_MGRS_LEN:
-        raise GeoEncodingError(
-            "INVALID_MGRS", f"mgrs is {len(mgrs_str)} chars, exceeding the {MAX_MGRS_LEN} limit"
-        )
     return mgrs_str
 
 
